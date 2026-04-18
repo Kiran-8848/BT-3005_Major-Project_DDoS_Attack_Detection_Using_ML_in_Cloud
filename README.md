@@ -97,11 +97,12 @@ locust -f locustfile.py --headless -u 500 -r 10 --host=http://localhost:5000
 ## 🤖 ML Models
 
 ### Dataset Features (68)
-CIC-IDS-2017 network flow features:
-- Flow duration, packet counts, byte counts
-- Inter-arrival times (IAT), flag counts
-- Flow bytes/sec, packets/sec
-- Window sizes, segment sizes
+The model is trained using a combination of datasets from CIC-DDoS2019 and CIC-IDS2017:
+
+*DrDoS_LDAP.csv → LDAP-based DDoS attacks
+*DrDoS_MSSQL.csv → MSSQL reflection attacks
+*DrDoS_UDP.csv → UDP-based amplification attacks
+*Monday-WorkingHours.pcap_ISCX.csv → BENIGN (normal traffic)
 
 ### Label Encoding
 - `BENIGN` → 0 (normal traffic)
