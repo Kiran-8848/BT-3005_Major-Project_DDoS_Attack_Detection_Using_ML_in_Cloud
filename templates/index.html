@@ -322,6 +322,7 @@ select.dark:focus,input.dark:focus{border-color:var(--cyan)}
       <div class="pg-sub">Real-time threat monitoring and analytics</div>
     </div>
     <div class="pg-badge">
+      <button class="btn btn-r" onclick="simulateAttack()">🚀 Simulate Attack</button>
       <button class="btn btn-c" onclick="fetchStatus()">🔄 Refresh</button>
     </div>
   </div>
@@ -379,7 +380,7 @@ select.dark:focus,input.dark:focus{border-color:var(--cyan)}
       </div>
     </div>
 
-    <!-- Recent Attacks + Blocked IPs side by side (like CyberShield screenshot) -->
+    <!-- Recent Attacks + Blocked IPs side by side -->
     <div class="g2">
       <div class="card">
         <div class="card-h"><span>⚠️</span><span class="card-title">Recent Attacks</span><span class="card-badge" id="atkCount">0</span></div>
@@ -387,10 +388,15 @@ select.dark:focus,input.dark:focus{border-color:var(--cyan)}
         <div class="feed" id="atkFeed"></div>
       </div>
       <div class="card">
-        <div class="card-h"><span>🚫</span><span class="card-title">Recently Blocked IPs</span><span class="card-badge" id="blkCount">0</span></div>
-        <div class="tbl-hdr" style="grid-template-columns:130px 1fr 150px"><span>IP Address</span><span>Reason</span><span>Time</span></div>
-        <div class="feed" id="blkFeed"></div>
+        <div class="card-h"><span>📡</span><span class="card-title">Live Traffic Feed</span><span class="card-badge" id="feedCnt">0</span></div>
+        <div class="tbl-hdr atk-hdr"><span>Type</span><span>IP Address</span><span>Path</span><span>Time</span></div>
+        <div class="feed" id="liveFeed"></div>
       </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><span>🚫</span><span class="card-title">Recently Blocked IPs</span><span class="card-badge" id="blkCount">0</span></div>
+      <div class="tbl-hdr" style="grid-template-columns:130px 1fr 150px"><span>IP Address</span><span>Reason</span><span>Time</span></div>
+      <div class="feed" id="blkFeed"></div>
     </div>
   </div>
 
@@ -422,11 +428,6 @@ select.dark:focus,input.dark:focus{border-color:var(--cyan)}
     <div class="card">
       <div class="card-h"><span>📈</span><span class="card-title">Traffic Timeline</span><span class="card-badge live">LIVE</span></div>
       <div class="card-b"><div class="ch-wrap" style="height:240px"><canvas id="timelineChart"></canvas></div></div>
-    </div>
-    <div class="card">
-      <div class="card-h"><span>📋</span><span class="card-title">Live Request Feed</span><span class="card-badge" id="feedCnt">0</span></div>
-      <div class="tbl-hdr atk-hdr"><span>Type</span><span>IP</span><span>Path</span><span>Time</span></div>
-      <div class="feed" id="liveFeed" style="max-height:250px"></div>
     </div>
   </div>
 </div>
@@ -728,7 +729,8 @@ function addAtkRow(e, feedId){
   if(!feed) return;
   const row = document.createElement('div');
   row.className = 'tbl-row atk-row';
-  row.innerHTML = `<span>${typeTag(e.attack_type)}</span><span style="color:#0099cc">${e.ip}</span><span style="color:#5a7a99">${e.req_rate}/s</span><span style="color:#5a7a99">${e.time}</span>`;
+  row.style.gridTemplateColumns = '110px 1fr 100px 100px 60px';
+  row.innerHTML = `<span>${typeTag(e.attack_type)}</span><span style="color:#0099cc">${e.ip}</span><span style="color:#5a7a99">${e.req_rate}/s</span><span style="color:#5a7a99">${e.time}</span><button class="unblock" style="background:rgba(255,34,68,.1);color:var(--red);border-color:rgba(255,34,68,.2)" onclick="blockIP('${e.ip}')">BLOCK</button>`;
   feed.prepend(row);
   if(feed.children.length>150) feed.removeChild(feed.lastChild);
 }
@@ -758,11 +760,21 @@ function addLiveFeed(e){
   const feed = document.getElementById('liveFeed');
   const row  = document.createElement('div');
   row.className = 'tbl-row atk-row';
+  row.style.gridTemplateColumns = '110px 1fr 100px 100px 60px';
   const isAtk = e.label==='ATTACK';
-  row.innerHTML = `<span>${isAtk?typeTag(e.attack_type):'<span class="tag benign">BENIGN</span>'}</span><span style="color:#0099cc">${e.ip}</span><span style="color:#5a7a99;overflow:hidden;text-overflow:ellipsis">${e.path||'/'}</span><span style="color:#5a7a99">${e.time}</span>`;
+  row.innerHTML = `<span>${isAtk?typeTag(e.attack_type):'<span class="tag benign">BENIGN</span>'}</span><span style="color:#0099cc">${e.ip}</span><span style="color:#5a7a99;overflow:hidden;text-overflow:ellipsis">${e.path||'/'}</span><span style="color:#5a7a99">${e.time}</span><button class="unblock" style="background:rgba(255,34,68,.1);color:var(--red);border-color:rgba(255,34,68,.2)" onclick="blockIP('${e.ip}')">BLOCK</button>`;
   feed.prepend(row);
   if(feed.children.length>200) feed.removeChild(feed.lastChild);
   document.getElementById('feedCnt').textContent = feed.children.length;
+}
+
+async function blockIP(ip){
+  showToast(`🚫 Blocking ${ip}...`);
+  await fetch(`/api/block/${ip}`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ reason: 'Manual Block' })
+  });
 }
 
 function updateBlockedTable(list){
@@ -939,6 +951,18 @@ function switchTab(name){
   });
   document.querySelectorAll('.tab').forEach((t,i)=>{
     t.classList.toggle('on',['overview','geographic','timeline'][i]===name);
+  });
+}
+
+async function simulateAttack(){
+  const types = ['DrDoS_UDP', 'DrDoS_LDAP', 'DrDoS_MSSQL'];
+  const type  = types[Math.floor(Math.random()*types.length)];
+  const ip    = '1.2.3.'+Math.floor(Math.random()*254);
+  showToast(`🚀 Launching simulated ${type}...`);
+  await fetch('/api/simulate', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ type, ip, count: 10 })
   });
 }
 
