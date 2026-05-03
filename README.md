@@ -165,3 +165,13 @@ Runs automatically if script has root privileges:
 sudo python app.py
 ```
 Without root, falls back to in-memory blocking (dashboard shows correctly, no actual firewall rule).
+
+### winget install Python.Python.3.11
+
+###. Remove-Item -Recurse -Force venv
+
+### py -3.11 -m venv venv
+
+### venv\Scripts\activate
+
+### python -m pip install -r requirements.txt
